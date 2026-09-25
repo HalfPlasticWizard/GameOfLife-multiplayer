@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Zense Multiplayer Game of Life</title>
+    <link href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;700&family=Geologica:wght@400;600;700&family=Tektur:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.8.3/dist/socket.io.min.js"></script>
+    <style>
+        :root {
+            --bg-main: #000814;
+            --bg-panel: rgba(0, 8, 20, 0.85);
+            --bg-element: #004E89;
+            --bg-hover: #00A6FB;
+            --border-color: rgba(211, 211, 211, 0.15);
+            --border-focus: #00A6FB;
+            --text-primary: #F8F9FA;
+            --text-secondary: #D3D3D3;
+            --text-muted: #8892b0;
+            
+            --accent-green: #26FEC3;
+            --accent-green-hover: #25A18E;
+            --accent-blue: #00A6FB;
+            --accent-blue-hover: #004E89;
+            --accent-red: #D81159;
+            --accent-red-hover: #9B2226;
+            --accent-amber: #FFBA08;
+            --accent-indigo: #3D348B;
+            --accent-orange: #FF6B35;
+            --accent-lavender: #C0C1F7;
+
+            /* Complementary series */
+            --comp-green: #208B3A;
+            --comp-purple: #5603AD;
+            --comp-blue: #023E8A;
+            --comp-magenta: #B5179E;
+            --comp-red: #9B2226;
+            --comp-orange: #FB8500;
+        }
+
+        body {
+            font-family: 'Chivo', system-ui, -apple-system, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            margin: 0;
+            height: 100vh;
+            box-sizing: border-box;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .bg-glow {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background:
+                radial-gradient(circle at 15% 20%, rgba(0, 166, 251, 0.20), transparent 45%),
+                radial-gradient(circle at 85% 80%, rgba(61, 52, 139, 0.28), transparent 50%),
+                var(--bg-main);
+        }
+
+        .bg-pattern {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            opacity: 0.4;
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-indigo) 55%, var(--bg-element) 100%);
+            -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20width%3D%22800%22%20height%3D%22800%22%20viewBox%3D%220%200%20800%20800%22%20fill%3D%22none%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%0A%3Ccircle%20cx%3D%2270%22%20cy%3D%2270%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22290%22%20cy%3D%2270%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%2270%22%20cy%3D%22510%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%2270%22%20cy%3D%22730%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%2270%22%20cy%3D%22290%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22290%22%20cy%3D%22290%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22730%22%20cy%3D%2270%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22290%22%20cy%3D%22510%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22510%22%20cy%3D%22290%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22510%22%20cy%3D%2270%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22730%22%20cy%3D%22290%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22290%22%20cy%3D%22730%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22510%22%20cy%3D%22730%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22730%22%20cy%3D%22510%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22510%22%20cy%3D%22510%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22730%22%20cy%3D%22730%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Crect%20x%3D%22315%22%20y%3D%2240%22%20width%3D%22170%22%20height%3D%2260%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%2295%22%20y%3D%22260%22%20width%3D%22170%22%20height%3D%2260%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%22535%22%20y%3D%22484%22%20width%3D%22170%22%20height%3D%2260%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%2274%22%20y%3D%22244%22%20width%3D%22240.38%22%20height%3D%2260%22%20transform%3D%22rotate%28-45%2074%20244%29%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%22514%22%20y%3D%22244%22%20width%3D%22240.38%22%20height%3D%2260%22%20transform%3D%22rotate%28-45%20514%20244%29%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%22294%22%20y%3D%22464%22%20width%3D%22240.38%22%20height%3D%2260%22%20transform%3D%22rotate%28-45%20294%20464%29%22%20fill%3D%22white%22/%3E%0A%3Crect%20width%3D%22240.38%22%20height%3D%2260%22%20transform%3D%22matrix%28-0.707107%20-0.707107%20-0.707107%200.707107%20286%20684%29%22%20fill%3D%22white%22/%3E%0A%3Crect%20width%3D%22240.38%22%20height%3D%2260%22%20transform%3D%22matrix%28-0.707107%20-0.707107%20-0.707107%200.707107%20726%20684%29%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%22294%22%20y%3D%22684%22%20width%3D%22240.38%22%20height%3D%2260%22%20transform%3D%22rotate%28-45%20294%20684%29%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%22316%22%20y%3D%22315%22%20width%3D%22170%22%20height%3D%2260%22%20transform%3D%22rotate%2890%20316%20315%29%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%22536%22%20y%3D%22315%22%20width%3D%22170%22%20height%3D%2260%22%20transform%3D%22rotate%2890%20536%20315%29%22%20fill%3D%22white%22/%3E%0A%3C/svg%3E%0A");
+            mask-image: url("data:image/svg+xml,%3Csvg%20width%3D%22800%22%20height%3D%22800%22%20viewBox%3D%220%200%20800%20800%22%20fill%3D%22none%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%0A%3Ccircle%20cx%3D%2270%22%20cy%3D%2270%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22290%22%20cy%3D%2270%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%2270%22%20cy%3D%22510%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%2270%22%20cy%3D%22730%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%2270%22%20cy%3D%22290%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22290%22%20cy%3D%22290%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22730%22%20cy%3D%2270%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22290%22%20cy%3D%22510%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22510%22%20cy%3D%22290%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22510%22%20cy%3D%2270%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22730%22%20cy%3D%22290%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22290%22%20cy%3D%22730%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22510%22%20cy%3D%22730%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22730%22%20cy%3D%22510%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22510%22%20cy%3D%22510%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Ccircle%20cx%3D%22730%22%20cy%3D%22730%22%20r%3D%2247.5%22%20stroke%3D%22white%22%20stroke-width%3D%2245%22/%3E%0A%3Crect%20x%3D%22315%22%20y%3D%2240%22%20width%3D%22170%22%20height%3D%2260%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%2295%22%20y%3D%22260%22%20width%3D%22170%22%20height%3D%2260%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%22535%22%20y%3D%22484%22%20width%3D%22170%22%20height%3D%2260%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%2274%22%20y%3D%22244%22%20width%3D%22240.38%22%20height%3D%2260%22%20transform%3D%22rotate%28-45%2074%20244%29%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%22514%22%20y%3D%22244%22%20width%3D%22240.38%22%20height%3D%2260%22%20transform%3D%22rotate%28-45%20514%20244%29%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%22294%22%20y%3D%22464%22%20width%3D%22240.38%22%20height%3D%2260%22%20transform%3D%22rotate%28-45%20294%20464%29%22%20fill%3D%22white%22/%3E%0A%3Crect%20width%3D%22240.38%22%20height%3D%2260%22%20transform%3D%22matrix%28-0.707107%20-0.707107%20-0.707107%200.707107%20286%20684%29%22%20fill%3D%22white%22/%3E%0A%3Crect%20width%3D%22240.38%22%20height%3D%2260%22%20transform%3D%22matrix%28-0.707107%20-0.707107%20-0.707107%200.707107%20726%20684%29%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%22294%22%20y%3D%22684%22%20width%3D%22240.38%22%20height%3D%2260%22%20transform%3D%22rotate%28-45%20294%20684%29%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%22316%22%20y%3D%22315%22%20width%3D%22170%22%20height%3D%2260%22%20transform%3D%22rotate%2890%20316%20315%29%22%20fill%3D%22white%22/%3E%0A%3Crect%20x%3D%22536%22%20y%3D%22315%22%20width%3D%22170%22%20height%3D%2260%22%20transform%3D%22rotate%2890%20536%20315%29%22%20fill%3D%22white%22/%3E%0A%3C/svg%3E%0A");
+            -webkit-mask-repeat: repeat;
+            mask-repeat: repeat;
+            -webkit-mask-size: 420px 420px;
+            mask-size: 420px 420px;
+            -webkit-mask-position: center;
+            mask-position: center;
+            animation: pattern-drift 60s linear infinite;
+        }
+
+        @keyframes pattern-drift {
+            from { -webkit-mask-position: 0 0; mask-position: 0 0; }
+            to { -webkit-mask-position: 420px 420px; mask-position: 420px 420px; }
+        }
+
+        .app-header,
+        .workspace {
+            position: relative;
+            z-index: 1;
+        }
+
+        .app-header {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+            padding: 0 4px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        h2 {
+            font-family: 'Geologica', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            font-size: 1.35rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            background: linear-gradient(135deg, #F8F9FA 0%, #00A6FB 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-hero-title {
+            font-family: 'Tektur', system-ui, sans-serif;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .app-subtitle {
+            font-family: 'Chivo', system-ui, sans-serif;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .app-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .app-logo {
+            width: 30px;
+            height: 30px;
+            flex-shrink: 0;
+            color: var(--accent-blue);
+            filter: drop-shadow(0 0 6px rgba(0, 166, 251, 0.6));
+        }
+
+        .app-logo svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Main Workspace Layout */
+        .workspace {
+            display: flex;
+            gap: 16px;
+            max-width: 1200px;
+            width: 100%;
+            justify-content: center;
+            align-items: stretch;
+            flex-wrap: nowrap;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            min-width: 320px;
+            max-width: 840px;
+        }
+
+        /* Settings Card Container (Polished Sidebar Style) */
+        .settings-card {
+            background: linear-gradient(180deg, rgba(0, 8, 20, 0.95) 0%, rgba(0, 4, 10, 0.98) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 16px;
+            width: 270px;
+            flex-shrink: 0;
+            box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+            height: fit-content;
+        }
+
+        .settings-header {
+            font-family: 'Geologica', system-ui, sans-serif;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .settings-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .setting-item {
+            background: rgba(0, 78, 137, 0.15);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .setting-item:hover {
+            background: rgba(0, 78, 137, 0.3);
+            border-color: rgba(0, 166, 251, 0.4);
+            box-shadow: 0 4px 12px rgba(0, 166, 251, 0.15);
+        }
+
+        .setting-label {
+            font-size: 0.75rem;
+            font-weight: 400;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .setting-value-badge {
+            background: var(--bg-main);
+            color: var(--text-primary);
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .setting-control-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .setting-item select {
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 5px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 400;
+            outline: none;
+            width: 100%;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            font-family: 'Chivo', system-ui, sans-serif;
+        }
+
+        .setting-item select:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .setting-item select:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 2px rgba(0, 166, 251, 0.25);
+            background: var(--bg-panel);
+        }
+
+        /* Custom Range Slider Styling */
+        .setting-item input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            background: var(--bg-main);
+            border-radius: 3px;
+            outline: none;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            margin: 4px 0;
+            cursor: pointer;
+        }
+
+        .setting-item input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            cursor: pointer;
+            transition: transform 0.15s ease, background 0.15s ease;
+            box-shadow: 0 0 6px rgba(0, 166, 251, 0.6);
+        }
+
+        .setting-item input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: var(--accent-green);
+        }
+
+        .setting-item input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            cursor: pointer;
+            border: none;
+            transition: transform 0.15s ease, background 0.15s ease;
+            box-shadow: 0 0 6px rgba(0, 166, 251, 0.6);
+        }
+
+        .setting-item input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.2);
+            background: var(--accent-green);
+        }
+
+        .turn-badge {
+            background: var(--bg-main);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Stats Panel */
+        #stats {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 10px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 400;
+            flex-wrap: wrap;
+            justify-content: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+        }
+
+        .stat-item span {
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .stat-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 6px rgba(0,0,0,0.4);
+        }
+
+        /* Control Toolbar */
+        #controls {
+            margin-bottom: 10px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            padding: 8px 14px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            background: var(--bg-element);
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+            font-family: 'Chivo', system-ui, sans-serif;
+        }
+
+        button:hover {
+            background: var(--bg-hover);
+            color: var(--bg-main);
+            border-color: var(--text-muted);
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        #startBtn { background: var(--accent-green); color: var(--bg-main); border-color: transparent; }
+        #startBtn:hover { background: var(--accent-green-hover); color: var(--text-primary); }
+
+        #nextTurnBtn { background: var(--accent-blue); color: var(--bg-main); border-color: transparent; }
+        #nextTurnBtn:hover { background: var(--accent-blue-hover); color: var(--text-primary); }
+
+        #clearBtn { background: var(--accent-red); border-color: transparent; }
+        #clearBtn:hover { background: var(--accent-red-hover); }
+        
+        .tools-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(0, 78, 137, 0.2);
+            padding: 3px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+
+        .color-btn {
+            width: 20px;
+            height: 20px;
+            padding: 0;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: transform 0.15s, border-color 0.15s;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.15);
+        }
+
+        .color-btn.active {
+            border-color: #F8F9FA;
+            transform: scale(1.15);
+            box-shadow: 0 0 8px rgba(248, 249, 250, 0.8);
+        }
+
+        #eraserBtn {
+            background: rgba(211, 211, 211, 0.1);
+            font-size: 0.7rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        #eraserBtn.active {
+            border-color: #F8F9FA;
+            background: var(--accent-indigo);
+            box-shadow: 0 0 6px rgba(248, 249, 250, 0.4);
+        }
+
+        canvas {
+            border: 2px solid var(--border-color);
+            background-color: #00040A;
+            border-radius: 10px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+            cursor: crosshair;
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Room Overlay Styling */
+        #roomOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(0, 8, 20, 0.9);
+            backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .room-card {
+            background: linear-gradient(180deg, rgba(0, 8, 20, 0.95) 0%, rgba(0, 4, 10, 0.98) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 24px;
+            width: 320px;
+            box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            text-align: center;
+        }
+
+        .room-card h3 {
+            margin: 0;
+            font-family: 'Geologica', system-ui, sans-serif;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+        }
+
+        .room-card input {
+            background: var(--bg-main);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+            font-family: 'Chivo', system-ui, sans-serif;
+        }
+
+        .room-card input:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 2px rgba(0, 166, 251, 0.25);
+        }
+
+        .room-card button {
+            width: 100%;
+            padding: 10px;
+            background: var(--accent-blue);
+            color: var(--bg-main);
+            border: none;
+            font-weight: 700;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .room-card button:hover {
+            background: var(--accent-green);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="roomOverlay">
+        <div class="room-card">
+            <h3>Join Multiplayer Room</h3>
+            <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">Enter a room name to join with other players in real-time.</p>
+            <input type="text" id="roomInput" placeholder="e.g. zense-room-1" value="default-room">
+            <button onclick="joinRoom()">Connect & Play</button>
+        </div>
+    </div>
+
+    <div class="bg-glow"></div>
+    <div class="bg-pattern"></div>
+
+    <div class="app-header">
+        <div class="app-header-row">
+            <div class="app-logo">
+                <svg width="580" height="580" viewBox="0 0 580 580" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M70 95C83.8071 95 95 83.8071 95 70C95 56.1929 83.8071 45 70 45C56.1929 45 45 56.1929 45 70C45 83.8071 56.1929 95 70 95ZM70 140C108.66 140 140 108.66 140 70C140 31.3401 108.66 0 70 0C31.3401 0 0 31.3401 0 70C0 108.66 31.3401 140 70 140Z" fill="currentColor"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M70 315C83.8071 315 95 303.807 95 290C95 276.193 83.8071 265 70 265C56.1929 265 45 276.193 45 290C45 303.807 56.1929 315 70 315ZM70 360C108.66 360 140 328.66 140 290C140 251.34 108.66 220 70 220C31.3401 220 0 251.34 0 290C0 328.66 31.3401 360 70 360Z" fill="currentColor"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M290 95C303.807 95 315 83.8071 315 70C315 56.1929 303.807 45 290 45C276.193 45 265 56.1929 265 70C265 83.8071 276.193 95 290 95ZM290 140C328.66 140 360 108.66 360 70C360 31.3401 328.66 0 290 0C251.34 0 220 31.3401 220 70C220 108.66 251.34 140 290 140Z" fill="currentColor"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M290 535C303.807 535 315 523.807 315 510C315 496.193 303.807 485 290 485C276.193 485 265 496.193 265 510C265 523.807 276.193 535 290 535ZM290 580C328.66 580 360 548.66 360 510C360 471.34 328.66 440 290 440C251.34 440 220 471.34 220 510C220 548.66 251.34 580 290 580Z" fill="currentColor"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M70 535C83.8071 535 95 523.807 95 510C95 496.193 83.8071 485 70 485C56.1929 485 45 496.193 45 510C45 523.807 56.1929 535 70 535ZM70 580C108.66 580 140 548.66 140 510C140 471.34 108.66 440 70 440C31.3401 440 0 471.34 0 510C0 548.66 31.3401 580 70 580Z" fill="currentColor"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M290 315C303.807 315 315 303.807 315 290C315 276.193 303.807 265 290 265C276.193 265 265 276.193 265 290C265 303.807 276.193 315 290 315ZM290 360C328.66 360 360 328.66 360 290C360 251.34 328.66 220 290 220C251.34 220 220 251.34 220 290C220 328.66 251.34 360 290 360Z" fill="currentColor"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M510 95C523.807 95 535 83.8071 535 70C535 56.1929 523.807 45 510 45C496.193 45 485 56.1929 485 70C485 83.8071 496.193 95 510 95ZM510 140C548.66 140 580 108.66 580 70C580 31.3401 548.66 0 510 0C471.34 0 440 31.3401 440 70C440 108.66 471.34 140 510 140Z" fill="currentColor"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M510 315C523.807 315 535 303.807 535 290C535 276.193 523.807 265 510 265C496.193 496.193 485 276.193 485 290C485 303.807 496.193 315 510 315ZM510 360C548.66 360 580 328.66 580 290C580 251.34 548.66 220 510 220C471.34 220 440 251.34 440 290C440 328.66 471.34 360 510 360Z" fill="currentColor"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M510 535C523.807 535 535 523.807 535 510C535 496.193 523.807 485 510 485C496.193 485 485 496.193 485 510C485 523.807 496.193 535 510 535ZM510 580C548.66 580 580 548.66 580 510C580 471.34 548.66 440 510 440C471.34 440 440 471.34 440 510C440 548.66 471.34 580 510 580Z" fill="currentColor"/>
+<path d="M95 40H265V100H95V40Z" fill="currentColor"/>
+<path d="M95 480H265V540H95V480Z" fill="currentColor"/>
+<path d="M315 40H485V100H315V40Z" fill="currentColor"/>
+<path d="M294 244L463.974 74.0257L506.401 116.452L336.426 286.426L294 244Z" fill="currentColor"/>
+<path d="M74 464L243.974 294.026L286.401 336.452L116.426 506.426L74 464Z" fill="currentColor"/>
+<path d="M315 480H485V540H315V480Z" fill="currentColor"/>
+<path d="M540 315V485H480V315H540Z" fill="currentColor"/>
+</svg>
+            </div>
+            <h2>Zense Multiplayer Game of Life</h2>
+        </div>
+    </div>
+    
+    <div class="workspace">
+        <div class="settings-card">
+            <div class="settings-header">
+                <span>⚙️ Configuration</span>
+            </div>
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <label for="colorCountSelect">Active Colors</label>
+                    </div>
+                    <div class="setting-control-wrapper">
+                        <select id="colorCountSelect" onchange="changeColorCount(this.value)">
+                            <option value="2">2 Colors</option>
+                            <option value="3">3 Colors</option>
+                            <option value="4" selected>4 Colors</option>
+                            <option value="5">5 Colors</option>
+                            <option value="6">6 Colors</option>
+                            <option value="8">8 Colors</option>
+                            <option value="10">10 Colors</option>
+                            <option value="12">12 Colors</option>
+                            <option value="14">14 Colors</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <label for="gridSizeSelect">Grid Dimension</label>
+                    </div>
+                    <div class="setting-control-wrapper">
+                        <select id="gridSizeSelect" onchange="changeGridSize(this.value)">
+                            <option value="40x30">40 × 30</option>
+                            <option value="60x40" selected>60 × 40</option>
+                            <option value="80x60">80 × 60</option>
+                            <option value="100x75">100 × 75</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <label for="maxPerColorInput">Max Cells / Color</label>
+                        <span id="maxPerColorVal" class="setting-value-badge">20</span>
+                    </div>
+                    <div class="setting-control-wrapper">
+                        <input type="range" id="maxPerColorInput" value="20" min="1" max="200" oninput="changeMaxPerColor(this.value)">
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <label for="totalRoundsInput">Total Rounds</label>
+                        <span id="totalRoundsVal" class="setting-value-badge">4</span>
+                    </div>
+                    <div class="setting-control-wrapper">
+                        <input type="range" id="totalRoundsInput" value="4" min="1" max="25" oninput="changeTotalRounds(this.value)">
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <label for="autoTurnsInput">Auto-Play Limit</label>
+                        <span id="autoTurnsVal" class="setting-value-badge">10</span>
+                    </div>
+                    <div class="setting-control-wrapper">
+                        <input type="range" id="autoTurnsInput" value="10" min="1" max="200" oninput="updateAutoTurnsVal(this.value)">
+                    </div>
+                </div>
+
+                <div class="setting-item" id="turnIndicatorBox">
+                    <div class="setting-label">
+                        <span>Active Turn</span>
+                    </div>
+                    <div class="turn-badge">
+                        <span id="currentTurnColor" style="display:inline-flex;align-items:center;gap:6px;color:var(--text-primary)"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div id="stats">
+                <!-- Dynamically populated stats -->
+            </div>
+
+            <div id="controls">
+                <button id="startBtn" onclick="togglePlay()">Auto Play</button>
+                <button id="nextTurnBtn" onclick="passTurn()">Done</button>
+                <button id="clearBtn" onclick="clearGrid()">Clear</button>
+                <button onclick="randomize()">Randomize</button>
+                
+                <div class="tools-wrapper" id="toolsWrapper">
+                    <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); margin-right: 2px;">Tool:</span>
+                    <button id="eraserBtn" onclick="selectEraser()" title="Eraser">🧹 Eraser</button>
+                </div>
+            </div>
+
+            <canvas id="lifeCanvas"></canvas>
+        </div>
+    </div>
+
+<script>
+    let socket = null;
+    let currentRoom = null;
+
+    function joinRoom() {
+        const roomName = document.getElementById('roomInput').value.trim();
+        if (!roomName) return;
+        currentRoom = roomName;
+        
+        socket = io();
+        socket.emit('join-room', currentRoom);
+
+        socket.on('sync-state', (data) => {
+            if (data.grid) grid = data.grid;
+            if (data.currentRound !== undefined) currentRound = data.currentRound;
+            if (data.turnIndex !== undefined) turnIndex = data.turnIndex;
+            if (data.limitActive !== undefined) limitActive = data.limitActive;
+            draw();
+        });
+
+        socket.on('update-cell', (data) => {
+            if (data.r >= 0 && data.r < ROWS && data.c >= 0 && data.c < COLS) {
+                grid[data.r][data.c] = data.color;
+                draw();
+            }
+        });
+
+        socket.on('pass-turn', () => {
+            passTurnLocal();
+        });
+
+        socket.on('clear-grid', () => {
+            clearGridLocal();
+        });
+
+        socket.on('randomize', () => {
+            randomizeLocal();
+        });
+
+        socket.on('toggle-play', () => {
+            togglePlayLocal();
+        });
+
+        document.getElementById('roomOverlay').style.display = 'none';
+    }
+
+    const canvas = document.getElementById('lifeCanvas');
+    const ctx = canvas.getContext('2d');
+    const startBtn = document.getElementById('startBtn');
+    const eraserBtn = document.getElementById('eraserBtn');
+    const autoTurnsInput = document.getElementById('autoTurnsInput');
+    const totalRoundsInput = document.getElementById('totalRoundsInput');
+    const maxPerColorInput = document.getElementById('maxPerColorInput');
+    const turnIndicatorBox = document.getElementById('turnIndicatorBox');
+
+    const CELL_SIZE = 12; 
+    let COLS = 60;
+    let ROWS = 40;
+    
+    let TOTAL_ROUNDS = 4;
+    let maxPerColor = 20;
+    let limitActive = true;
+
+    // Full Zense Palette: Neon Series + Complementary Series (per brand colour guide)
+    const ALL_PALETTE = [
+        { hex: '#26FEC3', name: 'Neon Mint' },
+        { hex: '#00A6FB', name: 'Neon Sky' },
+        { hex: '#FF6B35', name: 'Neon Coral' },
+        { hex: '#FFBA08', name: 'Neon Yellow' },
+        { hex: '#D81159', name: 'Neon Magenta' },
+        { hex: '#3D348B', name: 'Neon Indigo' },
+        { hex: '#25A18E', name: 'Teal Accent' },
+        { hex: '#C0C1F7', name: 'Lavender Soft' },
+        { hex: '#208B3A', name: 'Forest Comp' },
+        { hex: '#023E8A', name: 'Deep Blue Comp' },
+        { hex: '#5603AD', name: 'Violet Comp' },
+        { hex: '#B5179E', name: 'Magenta Comp' },
+        { hex: '#9B2226', name: 'Brick Comp' },
+        { hex: '#FB8500', name: 'Amber Comp' }
+    ];
+
+    let numColors = 4;
+    let activePalette = ALL_PALETTE.slice(0, numColors);
+    
+    canvas.width = COLS * CELL_SIZE;
+    canvas.height = ROWS * CELL_SIZE;
+
+    let grid = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+    let isPlaying = false;
+    let intervalId = null;
+    let selectedColor = activePalette[0].hex; 
+    let isEraser = false;
+
+    let currentRound = 1;
+    let turnIndex = 0; 
+    let turnsRemaining = 0;
+
+    function resizeCanvasAndGrid() {
+        canvas.width = COLS * CELL_SIZE;
+        canvas.height = ROWS * CELL_SIZE;
+        grid = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+    }
+
+    function changeGridSize(val) {
+        if (isPlaying) stopPlay();
+        const parts = val.split('x');
+        COLS = parseInt(parts[0]);
+        ROWS = parseInt(parts[1]);
+        resizeCanvasAndGrid();
+        turnIndex = 0;
+        currentRound = 1;
+        limitActive = true;
+        turnIndicatorBox.style.display = 'flex';
+        buildUIElements();
+        randomize();
+    }
+
+    function changeTotalRounds(val) {
+        TOTAL_ROUNDS = Math.max(1, parseInt(val) || 1);
+        document.getElementById('totalRoundsVal').innerText = TOTAL_ROUNDS;
+        if (currentRound > TOTAL_ROUNDS) {
+            currentRound = TOTAL_ROUNDS;
+        }
+        updateCounters();
+    }
+
+    function changeMaxPerColor(val) {
+        maxPerColor = Math.max(1, parseInt(val) || 1);
+        document.getElementById('maxPerColorVal').innerText = maxPerColor;
+        updateCounters();
+    }
+
+    function updateAutoTurnsVal(val) {
+        document.getElementById('autoTurnsVal').innerText = val;
+    }
+
+    function buildUIElements() {
+        activePalette = ALL_PALETTE.slice(0, numColors);
+
+        const toolsWrapper = document.getElementById('toolsWrapper');
+        toolsWrapper.querySelectorAll('.color-btn').forEach(b => b.remove());
+
+        activePalette.forEach((item, index) => {
+            const btn = document.createElement('button');
+            btn.className = `color-btn ${index === 0 && !isEraser ? 'active' : ''}`;
+            btn.setAttribute('data-color', item.hex);
+            btn.style.background = item.hex;
+            btn.title = item.name;
+            btn.addEventListener('click', () => {
+                isEraser = false;
+                eraserBtn.classList.remove('active');
+                toolsWrapper.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedColor = item.hex;
+            });
+            toolsWrapper.insertBefore(btn, eraserBtn);
+        });
+
+        if (!activePalette.some(p => p.hex === selectedColor) && !isEraser) {
+            selectedColor = activePalette[0].hex;
+            const firstBtn = toolsWrapper.querySelector('.color-btn');
+            if (firstBtn) firstBtn.classList.add('active');
+        }
+
+        const statsDiv = document.getElementById('stats');
+        statsDiv.innerHTML = '';
+        activePalette.forEach(item => {
+            statsDiv.innerHTML += `
+                <div class="stat-item">
+                    <span class="stat-dot" style="background: ${item.hex};"></span>
+                    ${item.name}: <span id="count-${item.hex.replace('#','')}">0</span>${limitActive ? '/' + maxPerColor : ''}
+                </div>
+            `;
+        });
+        statsDiv.innerHTML += `<div class="stat-item">Total: <span id="count-total">0</span></div>`;
+        
+        if (limitActive) {
+            statsDiv.innerHTML += `<div class="stat-item" style="color: var(--accent-amber); margin-left: 10px;">Round: <span id="roundIndicator">${currentRound}/${TOTAL_ROUNDS}</span></div>`;
+        }
+
+        updateTurnIndicator();
+    }
+
+    function updateTurnIndicator() {
+        const turnSpan = document.getElementById('currentTurnColor');
+        const activeColorObj = activePalette[turnIndex];
+        turnSpan.innerHTML = `<span class="stat-dot" style="background: ${activeColorObj.hex};"></span> ${activeColorObj.name}`;
+    }
+
+    function changeColorCount(val) {
+        numColors = parseInt(val);
+        isEraser = false;
+        eraserBtn.classList.remove('active');
+        turnIndex = 0;
+        currentRound = 1;
+        buildUIElements();
+        
+        const validHexes = activePalette.map(p => p.hex);
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (grid[r][c] && !validHexes.includes(grid[r][c])) {
+                    grid[r][c] = null;
+                }
+            }
+        }
+        draw();
+    }
+
+    function selectEraser() {
+        isEraser = true;
+        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+        eraserBtn.classList.add('active');
+    }
+
+    function getColorCounts() {
+        let counts = {};
+        activePalette.forEach(p => counts[p.hex] = 0);
+        let total = 0;
+
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                let cell = grid[r][c];
+                if (cell) {
+                    total++;
+                    if (counts[cell] !== undefined) {
+                        counts[cell]++;
+                    }
+                }
+            }
+        }
+        return { counts, total };
+    }
+
+    function updateCounters() {
+        const { counts, total } = getColorCounts();
+        activePalette.forEach(p => {
+            const el = document.getElementById(`count-${p.hex.replace('#','')}`);
+            if (el) el.innerText = counts[p.hex] || 0;
+        });
+        const totalEl = document.getElementById('count-total');
+        if (totalEl) totalEl.innerText = total;
+
+        const roundEl = document.getElementById('roundIndicator');
+        if (roundEl) roundEl.innerText = `${currentRound}/${TOTAL_ROUNDS}`;
+
+        updateTurnIndicator();
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.strokeStyle = '#001226';
+        ctx.lineWidth = 0.5;
+        
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (grid[r][c]) {
+                    ctx.fillStyle = grid[r][c];
+                    ctx.fillRect(c * CELL_SIZE, r * CELL_SIZE, CELL_SIZE - 1, CELL_SIZE - 1);
+                }
+                ctx.strokeRect(c * CELL_SIZE, r * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            }
+        }
+        updateCounters();
+    }
+
+    function passTurn() {
+        if (socket && currentRoom) {
+            socket.emit('pass-turn', currentRoom);
+        }
+        passTurnLocal();
+    }
+
+    function passTurnLocal() {
+        if (isPlaying) return; 
+        turnIndex++;
+        if (turnIndex >= activePalette.length) {
+            turnIndex = 0;
+            currentRound++;
+            if (currentRound > TOTAL_ROUNDS) {
+                currentRound = 1; 
+            }
+        }
+        draw();
+    }
+
+    function step() {
+        if (turnsRemaining <= 0) {
+            stopPlay();
+            return;
+        }
+
+        let nextGrid = grid.map(row => [...row]); 
+        let evaluatingColor = activePalette[turnIndex].hex;
+
+        let rawNextGrid = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                let parentColors = [];
+                
+                for (let i = -1; i <= 1; i++) {
+                    for (let j = -1; j <= 1; j++) {
+                        if (i === 0 && j === 0) continue;
+                        let neighborRow = (r + i + ROWS) % ROWS;
+                        let neighborCol = (c + j + COLS) % COLS;
+                        
+                        if (grid[neighborRow][neighborCol]) {
+                            parentColors.push(grid[neighborRow][neighborCol]);
+                        }
+                    }
+                }
+
+                let liveNeighbors = parentColors.length;
+                let isAlive = grid[r][c] !== null;
+
+                if (isAlive) {
+                    if (liveNeighbors === 2 || liveNeighbors === 3) {
+                        rawNextGrid[r][c] = grid[r][c];
+                    }
+                } else {
+                    if (liveNeighbors === 3) {
+                        rawNextGrid[r][c] = determineBirthColor(parentColors);
+                    }
+                }
+            }
+        }
+
+        let colorCandidates = [];
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                let color = rawNextGrid[r][c];
+                if (color === evaluatingColor) {
+                    let isSurvivor = (grid[r][c] === color);
+                    colorCandidates.push({ r, c, isSurvivor });
+                }
+            }
+        }
+
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                if (nextGrid[r][c] === evaluatingColor) {
+                    nextGrid[r][c] = null;
+                }
+            }
+        }
+
+        colorCandidates.sort((a, b) => (b.isSurvivor ? 1 : 0) - (a.isSurvivor ? 1 : 0));
+
+        let currentEvaluatedCount = 0;
+        for (let cand of colorCandidates) {
+            if (!limitActive || currentEvaluatedCount < maxPerColor) {
+                nextGrid[cand.r][cand.c] = evaluatingColor;
+                currentEvaluatedCount++;
+            }
+        }
+
+        grid = nextGrid;
+
+        turnIndex++;
+        if (turnIndex >= activePalette.length) {
+            turnIndex = 0;
+        }
+
+        turnsRemaining--;
+        draw();
+
+        if (turnsRemaining <= 0) {
+            stopPlay();
+        }
+    }
+
+    function determineBirthColor(colors) {
+        let counts = {};
+        colors.forEach(color => counts[color] = (counts[color] || 0) + 1);
+        
+        const validHexes = activePalette.map(p => p.hex);
+        for (let color in counts) {
+            if (counts[color] >= 2 && validHexes.includes(color)) return color;
+        }
+        
+        return blendColors(colors);
+    }
+
+    function blendColors(colors) {
+        let r = 0, g = 0, b = 0;
+        colors.forEach(c => {
+            r += parseInt(c.slice(1,3), 16);
+            g += parseInt(c.slice(3,5), 16);
+            b += parseInt(c.slice(5,7), 16);
+        });
+        r = Math.floor(r / 3).toString(16).padStart(2, '0');
+        g = Math.floor(g / 3).toString(16).padStart(2, '0');
+        b = Math.floor(b / 3).toString(16).padStart(2, '0');
+        
+        const validHexes = activePalette.map(p => p.hex);
+        let closest = validHexes[0];
+        let minDistance = Infinity;
+        
+        let br = parseInt(r, 16), bg = parseInt(g, 16), bb = parseInt(b, 16);
+        validHexes.forEach(bc => {
+            let pr = parseInt(bc.slice(1,3), 16);
+            let pg = parseInt(bc.slice(3,5), 16);
+            let pb = parseInt(bc.slice(5,7), 16);
+            let dist = Math.abs(br - pr) + Math.abs(bg - pg) + Math.abs(bb - pb);
+            if (dist < minDistance) {
+                minDistance = dist;
+                closest = bc;
+            }
+        });
+        return closest;
+    }
+
+    function togglePlay() {
+        if (socket && currentRoom) {
+            socket.emit('toggle-play', currentRoom);
+        }
+        togglePlayLocal();
+    }
+
+    function togglePlayLocal() {
+        if (isPlaying) {
+            stopPlay();
+        } else {
+            startPlay();
+        }
+    }
+
+    function startPlay() {
+        isPlaying = true;
+        startBtn.innerText = "Pause Auto";
+        startBtn.style.background = "var(--accent-amber)";
+        startBtn.style.color = "var(--bg-main)";
+        
+        if (limitActive) {
+            limitActive = false;
+            turnIndicatorBox.style.display = 'none';
+            buildUIElements();
+        }
+
+        turnsRemaining = parseInt(autoTurnsInput.value) || 10;
+        intervalId = setInterval(step, 300);
+    }
+
+    function stopPlay() {
+        isPlaying = false;
+        startBtn.innerText = "Auto Play";
+        startBtn.style.background = "var(--accent-green)";
+        startBtn.style.color = "var(--bg-main)";
+        clearInterval(intervalId);
+    }
+
+    function clearGrid() {
+        if (socket && currentRoom) {
+            socket.emit('clear-grid', currentRoom);
+        }
+        clearGridLocal();
+    }
+
+    function clearGridLocal() {
+        grid = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+        turnIndex = 0;
+        currentRound = 1;
+        limitActive = true;
+        turnIndicatorBox.style.display = 'flex';
+        if (isPlaying) stopPlay();
+        buildUIElements();
+        draw();
+    }
+
+    function randomize() {
+        if (socket && currentRoom) {
+            socket.emit('randomize', currentRoom);
+        }
+        randomizeLocal();
+    }
+
+    function randomizeLocal() {
+        grid = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+        turnIndex = 0;
+        currentRound = 1;
+        limitActive = true;
+        turnIndicatorBox.style.display = 'flex';
+        buildUIElements();
+        const validHexes = activePalette.map(p => p.hex);
+        
+        validHexes.forEach(color => {
+            let placed = 0;
+            while (placed < maxPerColor) {
+                let r = Math.floor(Math.random() * ROWS);
+                let c = Math.floor(Math.random() * COLS);
+                if (!grid[r][c]) {
+                    grid[r][c] = color;
+                    placed++;
+                }
+            }
+        });
+        draw();
+    }
+
+    function handleDraw(e) {
+        const rect = canvas.getBoundingClientRect();
+        const c = Math.floor((e.clientX - rect.left) / CELL_SIZE);
+        const r = Math.floor((e.clientY - rect.top) / CELL_SIZE);
+        
+        if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+            if (e.buttons === 1) { 
+                let targetColor = null;
+                if (isEraser) {
+                    targetColor = null;
+                } else {
+                    const { counts } = getColorCounts();
+                    if (grid[r][c] !== selectedColor) {
+                        if (limitActive && counts[selectedColor] >= maxPerColor) {
+                            return; 
+                        }
+                    }
+                    targetColor = selectedColor;
+                }
+                
+                if (grid[r][c] !== targetColor) {
+                    grid[r][c] = targetColor;
+                    if (socket && currentRoom) {
+                        socket.emit('update-cell', { room: currentRoom, r, c, color: targetColor });
+                    }
+                    draw();
+                }
+            } else if (e.buttons === 2) { 
+                if (grid[r][c] !== null) {
+                    grid[r][c] = null;
+                    if (socket && currentRoom) {
+                        socket.emit('update-cell', { room: currentRoom, r, c, color: null });
+                    }
+                    draw();
+                }
+            }
+        }
+    }
+
+    canvas.addEventListener('mousedown', handleDraw);
+    canvas.addEventListener('mousemove', handleDraw);
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    buildUIElements();
+    randomize();
+</script>
+</body>
+</html>
